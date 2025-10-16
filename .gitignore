@@ -55,3 +55,12 @@ Carthage/Build/
 
 # Archivos de logs
 *.log
+
+# Xcode
+*.xcworkspace
+*.xcodeproj
+*.xcuserdata/
+DerivedData/
+build/
+Pods/
+
