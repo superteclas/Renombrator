@@ -1,0 +1,57 @@
+
+# ==========================================
+# .gitignore para Renombrator (macOS SwiftUI)
+# ==========================================
+
+# Archivos de usuario y configuraciones personales
+*.xcuserstate
+*.xcuserdata/
+*.xccheckout
+*.moved-aside
+*.xcscmblueprint
+
+# Derived data (build cache)
+DerivedData/
+build/
+
+# Configuración temporal de Xcode
+*.mode1v3
+*.mode2v3
+*.perspectivev3
+
+# Archivos de sistema
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+
+# Swift Package Manager
+Packages/
+Package.pins
+Package.resolved
+
+# CocoaPods / Carthage (por si se usan en el futuro)
+Pods/
+Carthage/
+Carthage/Build/
+
+# Archivos generados
+*.hmap
+*.ipa
+*.dSYM.zip
+*.dSYM
+*.tmp
+*.temp
+
+# Recursos innecesarios
+*.appiconset/
+*.icns
+*.car
+
+# Archivos de entorno o llaves privadas
+.env
+*.key
+*.pem
+
+# Archivos de logs
+*.log
