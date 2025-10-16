@@ -4,7 +4,7 @@ import SwiftUI
 struct RenombratorApp: App {
     var body: some Scene {
         WindowGroup {
-            WizardView() // Aquí simplemente llamamos al wizard
+            WizardView() // Llamamos al wizard principal
         }
     }
 }
