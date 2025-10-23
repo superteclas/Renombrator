@@ -32,7 +32,7 @@ struct WizardView: View {
                 // MARK: - Pantalla inicial
                 case -1:
                     VStack(spacing: 20) {
-                        Image(systemName: "folder.badge.gearshape")
+                        Image("Image")
                             .resizable()
                             .scaledToFit()
                             .frame(width: 100, height: 100)
@@ -170,12 +170,12 @@ struct WizardView: View {
                     VStack(spacing: 20) {
                         if showCompletionMessage {
                             // Nueva pantalla final
-                            Image(systemName: "checkmark.circle.fill")
+                            Image("Image") // nombre de tu imagen en Assets
                                 .resizable()
                                 .scaledToFit()
-                                .frame(width: 80, height: 80)
-                                .foregroundColor(.green)
+                                .frame(width: 120, height: 120)
                                 .shadow(radius: 5)
+
                             
                             Text("✅ Archivos renombrados correctamente")
                                 .font(.title2)
