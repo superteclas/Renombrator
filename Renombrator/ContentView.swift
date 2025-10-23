@@ -1,273 +1,35 @@
 import SwiftUI
+import AppKit
 
-struct WizardView: View {
-    @State private var step = -1
-    @State private var selectedURLs: [URL] = []
+// MARK: - ViewModel
+class WizardViewModel: ObservableObject {
+    @Published var step: Int = -1
+    @Published var selectedURLs: [URL] = []
+    @Published var destinationFolder: URL? = nil
+    @Published var addNumbering: Bool = false
+    @Published var prefixText: String = ""
+    @Published var suffixText: String = ""
+    @Published var progress: Double = 0
+    @Published var isRenaming: Bool = false
+    @Published var showCompletionMessage: Bool = false
+    @Published var capitalizationOption: WizardView.CapitalizationOption = .none
     
-    @State private var destinationFolder: URL? = nil
-    @State private var addNumbering = false
-    @State private var prefixText = ""
-    @State private var suffixText = ""
-    @State private var progress: Double = 0
-    @State private var isRenaming = false
-    @State private var showCompletionMessage = false
-    @State private var capitalizationOption: CapitalizationOption = .none
-
-    enum CapitalizationOption: String, CaseIterable, Identifiable {
-        case none = "Normal"
-        case firstLetter = "Primera letra mayúscula"
-        case uppercase = "Todo mayúsculas"
-        case lowercase = "Todo minúsculas"
-        
-        var id: String { self.rawValue }
-    }
-    
-    var body: some View {
-        ZStack {
-            LinearGradient(gradient: Gradient(colors: [.gray.opacity(0.1), .blue.opacity(0.15)]),
-                           startPoint: .topLeading,
-                           endPoint: .bottomTrailing)
-                .ignoresSafeArea()
-            
-            VStack(spacing: 0) {
-                // Logo siempre arriba
-                Image("Image")
-                    .resizable()
-                    .scaledToFit()
-                    .frame(width: 100, height: 100)
-                    .foregroundColor(.blue)
-                    .shadow(radius: 5)
-                    .padding(.top, step == -1 ? 70 : 70) // Más espacio en pasos 0,1,2,3
-                
-                // Contenido del paso centrado
-                VStack {
-                    Spacer()
-                    
-                    Group {
-                        switch step {
-                        // Pantalla inicial
-                        case -1:
-                            VStack(spacing: 20) {
-                                Text("Renombrator")
-                                    .font(.largeTitle)
-                                    .bold()
-                                Text("Versión 1.0")
-                                    .font(.footnote)
-                                    .foregroundColor(.secondary)
-                                Text("Renombra tus archivos en un solo clic y sin usar el terminal.")
-                                    .font(.subheadline)
-                                    .foregroundColor(.secondary)
-                                    .multilineTextAlignment(.center)
-                                    .padding(.horizontal, 30)
-                                Button("Comenzar") {
-                                    withAnimation(.easeInOut(duration: 0.5)) {
-                                        step = 0
-                                    }
-                                }
-                                .buttonStyle(.borderedProminent)
-                            }
-                            .multilineTextAlignment(.center)
-                            
-                        // Paso 1: Selección de archivos
-                        case 0:
-                            VStack(spacing: 20) {
-                                Text("Paso 1: Selecciona tus archivos o carpeta")
-                                    .font(.headline)
-                                HStack(spacing: 20) {
-                                    Button("Seleccionar archivos") { selectFiles() }
-                                    Button("Seleccionar carpeta") { selectFolder() }
-                                }
-                                if !selectedURLs.isEmpty {
-                                    Text("\(selectedURLs.count) archivos seleccionados")
-                                        .foregroundColor(.green)
-                                } else {
-                                    Text("Ningún archivo seleccionado")
-                                        .foregroundColor(.secondary)
-                                }
-                                Button("Siguiente") {
-                                    if !selectedURLs.isEmpty { step += 1 }
-                                }
-                                .disabled(selectedURLs.isEmpty)
-                                .buttonStyle(.borderedProminent)
-                            }
-                            .padding()
-                            .frame(maxWidth: 500)
-                            .multilineTextAlignment(.center)
-                            
-                        // Paso 2: Vista previa
-                        case 1:
-                            VStack(spacing: 20) {
-                                Text("Paso 2: Archivos seleccionados")
-                                    .font(.headline)
-                                if selectedURLs.isEmpty {
-                                    Text("No hay archivos seleccionados")
-                                        .foregroundColor(.secondary)
-                                } else {
-                                    List(selectedURLs, id: \.self) { url in
-                                        Text(url.lastPathComponent)
-                                            .lineLimit(1)
-                                    }
-                                    .frame(minHeight: 200)
-                                }
-                                HStack {
-                                    Button("Anterior") { step -= 1 }
-                                    Spacer()
-                                    Button("Siguiente") { step += 1 }
-                                }
-                            }
-                            .padding()
-                            .frame(maxWidth: 500)
-                            .multilineTextAlignment(.center)
-                            
-                        // Paso 3: Configuración
-                        case 2:
-                            VStack(alignment: .leading, spacing: 15) {
-                                Text("Paso 3: Configura el renombrado")
-                                    .font(.headline)
-                                
-                                Picker("Capitalización:", selection: $capitalizationOption) {
-                                    ForEach(CapitalizationOption.allCases) { option in
-                                        Text(option.rawValue).tag(option)
-                                    }
-                                }
-                                .pickerStyle(SegmentedPickerStyle())
-                                
-                                Toggle("Numerar archivos", isOn: $addNumbering)
-                                
-                                HStack {
-                                    Text("Prefijo:")
-                                    TextField("Ej: X_", text: $prefixText)
-                                        .textFieldStyle(RoundedBorderTextFieldStyle())
-                                }
-                                
-                                HStack {
-                                    Text("Sufijo:")
-                                    TextField("Ej: _Final", text: $suffixText)
-                                        .textFieldStyle(RoundedBorderTextFieldStyle())
-                                }
-                                
-                                HStack {
-                                    Text("Carpeta destino:")
-                                    Text(destinationFolder?.path ?? "Usando carpeta original")
-                                        .lineLimit(1)
-                                    Spacer()
-                                    Button("Seleccionar...") { selectDestinationFolder() }
-                                }
-                                
-                                HStack {
-                                    Button("Anterior") { step -= 1 }
-                                    Spacer()
-                                    Button("Renombrar") { startRenaming() }
-                                        .disabled(isRenaming)
-                                        .buttonStyle(.borderedProminent)
-                                }
-                            }
-                            .padding()
-                            .frame(maxWidth: 500)
-                            
-                        // Paso 4: Progreso / final
-                        case 3:
-                            VStack(spacing: 20) {
-                                if showCompletionMessage {
-                                    Text("✅ Archivos renombrados correctamente")
-                                        .font(.title2)
-                                        .foregroundColor(.green)
-                                    HStack(spacing: 20) {
-                                        if let destination = destinationFolder ?? selectedURLs.first?.deletingLastPathComponent() {
-                                            Button("Abrir carpeta") {
-                                                NSWorkspace.shared.open(destination)
-                                            }
-                                            .buttonStyle(.borderedProminent)
-                                        }
-                                        Button("Reiniciar") {
-                                            resetWizard()
-                                        }
-                                        .buttonStyle(.borderedProminent)
-                                    }
-                                } else {
-                                    Text("Renombrando archivos...")
-                                        .font(.headline)
-                                    ProgressView(value: progress)
-                                        .progressViewStyle(LinearProgressViewStyle())
-                                        .frame(width: 300)
-                                }
-                            }
-                            .padding()
-                            .frame(maxWidth: 500)
-                            .multilineTextAlignment(.center)
-                            
-                        default:
-                            EmptyView()
-                        }
-                    }
-                    
-                    Spacer()
-                }
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
-            }
-        }
-    }
-    
-    // MARK: - Funciones
-    func selectFiles() {
-        let panel = NSOpenPanel()
-        panel.allowsMultipleSelection = true
-        panel.canChooseDirectories = false
-        panel.canChooseFiles = true
-        panel.allowedContentTypes = [.item]
-        if panel.runModal() == .OK {
-            selectedURLs = panel.urls
-        }
-    }
-    
-    func selectFolder() {
-        let panel = NSOpenPanel()
-        panel.canChooseFiles = false
-        panel.canChooseDirectories = true
-        panel.allowsMultipleSelection = false
-        if panel.runModal() == .OK, let folder = panel.url {
-            do {
-                let files = try FileManager.default.contentsOfDirectory(at: folder, includingPropertiesForKeys: nil)
-                selectedURLs = files.filter { $0.isFileURL }
-            } catch {
-                print("Error leyendo carpeta:", error.localizedDescription)
-            }
-        }
-    }
-    
-    func selectDestinationFolder() {
-        let panel = NSOpenPanel()
-        panel.canChooseFiles = false
-        panel.canChooseDirectories = true
-        panel.allowsMultipleSelection = false
-        panel.prompt = "Seleccionar"
-        if panel.runModal() == .OK, let folder = panel.url {
-            destinationFolder = folder
-        }
-    }
-    
-    func startRenaming() {
+    func startRenaming(completion: @escaping () -> Void) {
         isRenaming = true
         progress = 0
         showCompletionMessage = false
         step = 3
         
-        // Determinar carpeta destino
-        let destination = destinationFolder ?? selectedURLs.first?.deletingLastPathComponent()
-        guard let destinationFolder = destination else { return }
+        guard let destinationFolder = destinationFolder ?? selectedURLs.first?.deletingLastPathComponent() else { return }
         
         DispatchQueue.global(qos: .userInitiated).async {
-            let total = selectedURLs.count
+            let total = self.selectedURLs.count
             
-            for (index, url) in selectedURLs.enumerated() {
-                // Nombre base del archivo sin extensión
+            for (index, url) in self.selectedURLs.enumerated() {
                 var baseName = url.deletingPathExtension().lastPathComponent
+                var newName = "\(self.prefixText)\(baseName)\(self.suffixText)"
                 
-                // Aplicar prefijo y sufijo primero
-                var newName = "\(prefixText)\(baseName)\(suffixText)"
-                
-                // Aplicar capitalización según opción
-                switch capitalizationOption {
+                switch self.capitalizationOption {
                 case .firstLetter:
                     newName = newName.prefix(1).uppercased() + newName.dropFirst()
                 case .uppercase:
@@ -278,37 +40,38 @@ struct WizardView: View {
                     break
                 }
                 
-                // Agregar numeración si corresponde
-                if addNumbering {
+                if self.addNumbering {
                     newName = "\(index + 1)_\(newName)"
                 }
                 
-                // Añadir extensión original
-                let newURL = destinationFolder.appendingPathComponent("\(newName).\(url.pathExtension)")
+                var newURL = destinationFolder.appendingPathComponent("\(newName).\(url.pathExtension)")
+                var counter = 1
+                while FileManager.default.fileExists(atPath: newURL.path) {
+                    newURL = destinationFolder.appendingPathComponent("\(newName)_\(counter).\(url.pathExtension)")
+                    counter += 1
+                }
                 
-                // Copiar/renombrar archivo
                 do {
                     try FileManager.default.copyItem(at: url, to: newURL)
                 } catch {
                     print("Error renombrando \(url.lastPathComponent): \(error.localizedDescription)")
                 }
                 
-                // Actualizar progreso en la UI
                 DispatchQueue.main.async {
-                    progress = Double(index + 1) / Double(total)
+                    self.progress = Double(index + 1) / Double(total)
                 }
                 
-                Thread.sleep(forTimeInterval: 0.1) // Simula tiempo de renombrado
+                Thread.sleep(forTimeInterval: 0.1)
             }
             
-            // Finalizar
             DispatchQueue.main.async {
-                showCompletionMessage = true
-                isRenaming = false
+                self.showCompletionMessage = true
+                self.isRenaming = false
+                NSSound(named: NSSound.Name("Glass"))?.play()
+                completion()
             }
         }
     }
-
     
     func resetWizard() {
         step = -1
@@ -320,6 +83,249 @@ struct WizardView: View {
         capitalizationOption = .none
         progress = 0
         showCompletionMessage = false
+    }
+}
+
+// MARK: - Main View
+struct WizardView: View {
+    @StateObject private var viewModel = WizardViewModel()
+    
+    enum CapitalizationOption: String, CaseIterable, Identifiable {
+        case none = "Normal"
+        case firstLetter = "Primera letra mayúscula"
+        case uppercase = "Todo mayúsculas"
+        case lowercase = "Todo minúsculas"
+        var id: String { rawValue }
+    }
+    
+    var body: some View {
+        ZStack {
+            LinearGradient(gradient: Gradient(colors: [.gray.opacity(0.1), .blue.opacity(0.15)]),
+                           startPoint: .topLeading,
+                           endPoint: .bottomTrailing)
+                .ignoresSafeArea()
+            
+            VStack(spacing: 0) {
+                // Logo
+                Image("Image")
+                    .resizable()
+                    .scaledToFit()
+                    .frame(width: 100, height: 100)
+                    .foregroundColor(.blue)
+                    .shadow(radius: 5)
+                    .padding(.top, 70)
+                
+                Spacer()
+                
+                // Pasos
+                Group {
+                    switch viewModel.step {
+                    case -1: StepIntro(viewModel: viewModel)
+                    case 0: StepSelectFiles(viewModel: viewModel)
+                    case 1: StepPreview(viewModel: viewModel)
+                    case 2: StepConfigure(viewModel: viewModel)
+                    case 3: StepProgress(viewModel: viewModel) {
+                        showCompletionAlert()
+                    }
+                    default: EmptyView()
+                    }
+                }
+                
+                Spacer()
+            }
+        }
+    }
+    
+    private func showCompletionAlert() {
+        let alert = NSAlert()
+        alert.messageText = "Renombrado completado ✅"
+        alert.informativeText = "Todos los archivos se han renombrado correctamente."
+        alert.alertStyle = .informational
+        alert.addButton(withTitle: "OK")
+        if let logoImage = NSImage(named: "Image") {
+            alert.icon = logoImage
+        }
+        alert.runModal()
+    }
+}
+
+// MARK: - Subviews de pasos
+struct StepIntro: View {
+    @ObservedObject var viewModel: WizardViewModel
+    var body: some View {
+        VStack(spacing: 20) {
+            Text("Renombrator").font(.largeTitle).bold()
+            Text("Versión 1.0").font(.footnote).foregroundColor(.secondary)
+            Text("Renombra tus archivos en un solo clic y sin usar el terminal.")
+                .font(.subheadline)
+                .foregroundColor(.secondary)
+                .multilineTextAlignment(.center)
+                .padding(.horizontal, 30)
+            Button("Comenzar") {
+                withAnimation(.easeInOut(duration: 0.5)) { viewModel.step = 0 }
+            }
+            .buttonStyle(.borderedProminent)
+        }
+        .multilineTextAlignment(.center)
+    }
+}
+
+struct StepSelectFiles: View {
+    @ObservedObject var viewModel: WizardViewModel
+    var body: some View {
+        VStack(spacing: 20) {
+            Text("Paso 1: Selecciona tus archivos o carpeta").font(.headline)
+            HStack(spacing: 20) {
+                Button("Seleccionar archivos") { selectFiles() }
+                Button("Seleccionar carpeta") { selectFolder() }
+            }
+            Text(viewModel.selectedURLs.isEmpty ? "Ningún archivo seleccionado" : "\(viewModel.selectedURLs.count) archivos seleccionados")
+                .foregroundColor(viewModel.selectedURLs.isEmpty ? .secondary : .green)
+            Button("Siguiente") { viewModel.step += 1 }
+                .disabled(viewModel.selectedURLs.isEmpty)
+                .buttonStyle(.borderedProminent)
+        }
+        .padding()
+        .frame(maxWidth: 500)
+    }
+    
+    func selectFiles() {
+        let panel = NSOpenPanel()
+        panel.allowsMultipleSelection = true
+        panel.canChooseDirectories = false
+        panel.canChooseFiles = true
+        panel.allowedContentTypes = [.item]
+        if panel.runModal() == .OK {
+            viewModel.selectedURLs = panel.urls
+        }
+    }
+    
+    func selectFolder() {
+        let panel = NSOpenPanel()
+        panel.canChooseFiles = false
+        panel.canChooseDirectories = true
+        panel.allowsMultipleSelection = false
+        if panel.runModal() == .OK, let folder = panel.url {
+            do {
+                let files = try FileManager.default.contentsOfDirectory(at: folder, includingPropertiesForKeys: nil)
+                viewModel.selectedURLs = files.filter { $0.isFileURL }
+            } catch {
+                print("Error leyendo carpeta:", error.localizedDescription)
+            }
+        }
+    }
+}
+
+struct StepPreview: View {
+    @ObservedObject var viewModel: WizardViewModel
+    var body: some View {
+        VStack(spacing: 20) {
+            Text("Paso 2: Archivos seleccionados").font(.headline)
+            if viewModel.selectedURLs.isEmpty {
+                Text("No hay archivos seleccionados").foregroundColor(.secondary)
+            } else {
+                List(viewModel.selectedURLs, id: \.self) { url in
+                    Text(url.lastPathComponent).lineLimit(1)
+                }
+                .frame(minHeight: 200)
+            }
+            HStack {
+                Button("Anterior") { viewModel.step -= 1 }
+                Spacer()
+                Button("Siguiente") { viewModel.step += 1 }
+            }
+        }
+        .padding()
+        .frame(maxWidth: 500)
+    }
+}
+
+struct StepConfigure: View {
+    @ObservedObject var viewModel: WizardViewModel
+    var body: some View {
+        VStack(alignment: .leading, spacing: 15) {
+            Text("Paso 3: Configura el renombrado").font(.headline)
+            Picker("Capitalización:", selection: $viewModel.capitalizationOption) {
+                ForEach(WizardView.CapitalizationOption.allCases) { option in
+                    Text(option.rawValue).tag(option)
+                }
+            }.pickerStyle(SegmentedPickerStyle())
+            
+            Toggle("Numerar archivos", isOn: $viewModel.addNumbering)
+            
+            HStack {
+                Text("Prefijo:")
+                TextField("Ej: X_", text: $viewModel.prefixText)
+                    .textFieldStyle(RoundedBorderTextFieldStyle())
+            }
+            HStack {
+                Text("Sufijo:")
+                TextField("Ej: _Final", text: $viewModel.suffixText)
+                    .textFieldStyle(RoundedBorderTextFieldStyle())
+            }
+            HStack {
+                Text("Carpeta destino:")
+                Text(viewModel.destinationFolder?.path ?? "Usando carpeta original")
+                    .lineLimit(1)
+                Spacer()
+                Button("Seleccionar...") { selectDestinationFolder() }
+            }
+            
+            HStack {
+                Button("Anterior") { viewModel.step -= 1 }
+                Spacer()
+                Button("Renombrar") {
+                    viewModel.startRenaming() {}
+                }
+                .disabled(viewModel.isRenaming)
+                .buttonStyle(.borderedProminent)
+            }
+        }
+        .padding()
+        .frame(maxWidth: 500)
+    }
+    
+    func selectDestinationFolder() {
+        let panel = NSOpenPanel()
+        panel.canChooseFiles = false
+        panel.canChooseDirectories = true
+        panel.allowsMultipleSelection = false
+        panel.prompt = "Seleccionar"
+        if panel.runModal() == .OK, let folder = panel.url {
+            viewModel.destinationFolder = folder
+        }
+    }
+}
+
+struct StepProgress: View {
+    @ObservedObject var viewModel: WizardViewModel
+    var completion: () -> Void
+    var body: some View {
+        VStack(spacing: 20) {
+            if viewModel.showCompletionMessage {
+                Text("✅ Archivos renombrados correctamente").font(.title2).foregroundColor(.green)
+                HStack(spacing: 20) {
+                    if let destination = viewModel.destinationFolder ?? viewModel.selectedURLs.first?.deletingLastPathComponent() {
+                        Button("Abrir carpeta") { NSWorkspace.shared.open(destination) }
+                            .buttonStyle(.borderedProminent)
+                    }
+                    Button("Reiniciar") { viewModel.resetWizard() }
+                        .buttonStyle(.borderedProminent)
+                }
+            } else {
+                Text("Renombrando archivos...").font(.headline)
+                ProgressView(value: viewModel.progress)
+                    .progressViewStyle(LinearProgressViewStyle())
+                    .frame(width: 300)
+            }
+        }
+        .padding()
+        .frame(maxWidth: 500)
+        .onChange(of: viewModel.showCompletionMessage) { _ in
+            if viewModel.showCompletionMessage {
+                completion()
+            }
+        }
     }
 }
 
