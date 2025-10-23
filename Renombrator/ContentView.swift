@@ -252,15 +252,21 @@ struct WizardView: View {
         showCompletionMessage = false
         step = 3
         
+        // Determinar carpeta destino
         let destination = destinationFolder ?? selectedURLs.first?.deletingLastPathComponent()
         guard let destinationFolder = destination else { return }
         
         DispatchQueue.global(qos: .userInitiated).async {
             let total = selectedURLs.count
+            
             for (index, url) in selectedURLs.enumerated() {
-                var newName = url.deletingPathExtension().lastPathComponent
+                // Nombre base del archivo sin extensión
+                var baseName = url.deletingPathExtension().lastPathComponent
                 
-                // Aplicar capitalización
+                // Aplicar prefijo y sufijo primero
+                var newName = "\(prefixText)\(baseName)\(suffixText)"
+                
+                // Aplicar capitalización según opción
                 switch capitalizationOption {
                 case .firstLetter:
                     newName = newName.prefix(1).uppercased() + newName.dropFirst()
@@ -272,29 +278,37 @@ struct WizardView: View {
                     break
                 }
                 
+                // Agregar numeración si corresponde
                 if addNumbering {
                     newName = "\(index + 1)_\(newName)"
                 }
                 
-                newName = "\(prefixText)\(newName)\(suffixText).\(url.pathExtension)"
-                let newURL = destinationFolder.appendingPathComponent(newName)
+                // Añadir extensión original
+                let newURL = destinationFolder.appendingPathComponent("\(newName).\(url.pathExtension)")
                 
+                // Copiar/renombrar archivo
                 do {
                     try FileManager.default.copyItem(at: url, to: newURL)
                 } catch {
                     print("Error renombrando \(url.lastPathComponent): \(error.localizedDescription)")
                 }
                 
-                DispatchQueue.main.async { progress = Double(index + 1)/Double(total) }
-                Thread.sleep(forTimeInterval: 0.1)
+                // Actualizar progreso en la UI
+                DispatchQueue.main.async {
+                    progress = Double(index + 1) / Double(total)
+                }
+                
+                Thread.sleep(forTimeInterval: 0.1) // Simula tiempo de renombrado
             }
             
+            // Finalizar
             DispatchQueue.main.async {
                 showCompletionMessage = true
                 isRenaming = false
             }
         }
     }
+
     
     func resetWizard() {
         step = -1
