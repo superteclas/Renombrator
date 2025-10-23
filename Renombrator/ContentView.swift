@@ -13,22 +13,35 @@ class WizardViewModel: ObservableObject {
     @Published var isRenaming: Bool = false
     @Published var showCompletionMessage: Bool = false
     @Published var capitalizationOption: WizardView.CapitalizationOption = .none
-    
+    @Published var clearNames: Bool = false // ✅ Borra nombres originales
+    @Published var customBaseName: String = "" // ✅ Nuevo nombre base personalizado
+
     func startRenaming(completion: @escaping () -> Void) {
         isRenaming = true
         progress = 0
         showCompletionMessage = false
         step = 3
-        
+
         guard let destinationFolder = destinationFolder ?? selectedURLs.first?.deletingLastPathComponent() else { return }
-        
+
         DispatchQueue.global(qos: .userInitiated).async {
             let total = self.selectedURLs.count
-            
+
             for (index, url) in self.selectedURLs.enumerated() {
                 var baseName = url.deletingPathExtension().lastPathComponent
+
+                // ✅ Si el usuario borra los nombres originales
+                if self.clearNames {
+                    if !self.customBaseName.isEmpty {
+                        baseName = self.customBaseName
+                    } else {
+                        baseName = String(format: "%03d", index + 1)
+                    }
+                }
+
                 var newName = "\(self.prefixText)\(baseName)\(self.suffixText)"
-                
+
+                // ✅ Capitalización
                 switch self.capitalizationOption {
                 case .firstLetter:
                     newName = newName.prefix(1).uppercased() + newName.dropFirst()
@@ -39,31 +52,35 @@ class WizardViewModel: ObservableObject {
                 case .none:
                     break
                 }
-                
-                if self.addNumbering {
-                    newName = "\(index + 1)_\(newName)"
+
+                // ✅ Numeración automática si está activada o si se usa nombre personalizado
+                if self.addNumbering || self.clearNames {
+                    newName = String(format: "%@_%03d", newName, index + 1)
                 }
-                
+
                 var newURL = destinationFolder.appendingPathComponent("\(newName).\(url.pathExtension)")
                 var counter = 1
+
+                // Evitar sobrescritura
                 while FileManager.default.fileExists(atPath: newURL.path) {
                     newURL = destinationFolder.appendingPathComponent("\(newName)_\(counter).\(url.pathExtension)")
                     counter += 1
                 }
-                
+
+                // Copiar archivo
                 do {
                     try FileManager.default.copyItem(at: url, to: newURL)
                 } catch {
                     print("Error renombrando \(url.lastPathComponent): \(error.localizedDescription)")
                 }
-                
+
                 DispatchQueue.main.async {
                     self.progress = Double(index + 1) / Double(total)
                 }
-                
-                Thread.sleep(forTimeInterval: 0.1)
+
+                Thread.sleep(forTimeInterval: 0.05)
             }
-            
+
             DispatchQueue.main.async {
                 self.showCompletionMessage = true
                 self.isRenaming = false
@@ -72,7 +89,7 @@ class WizardViewModel: ObservableObject {
             }
         }
     }
-    
+
     func resetWizard() {
         step = -1
         selectedURLs = []
@@ -80,6 +97,8 @@ class WizardViewModel: ObservableObject {
         prefixText = ""
         suffixText = ""
         addNumbering = false
+        clearNames = false
+        customBaseName = ""
         capitalizationOption = .none
         progress = 0
         showCompletionMessage = false
@@ -89,7 +108,7 @@ class WizardViewModel: ObservableObject {
 // MARK: - Main View
 struct WizardView: View {
     @StateObject private var viewModel = WizardViewModel()
-    
+
     enum CapitalizationOption: String, CaseIterable, Identifiable {
         case none = "Normal"
         case firstLetter = "Primera letra mayúscula"
@@ -97,14 +116,14 @@ struct WizardView: View {
         case lowercase = "Todo minúsculas"
         var id: String { rawValue }
     }
-    
+
     var body: some View {
         ZStack {
             LinearGradient(gradient: Gradient(colors: [.gray.opacity(0.1), .blue.opacity(0.15)]),
                            startPoint: .topLeading,
                            endPoint: .bottomTrailing)
                 .ignoresSafeArea()
-            
+
             VStack(spacing: 0) {
                 // Logo
                 Image("Image")
@@ -114,10 +133,10 @@ struct WizardView: View {
                     .foregroundColor(.blue)
                     .shadow(radius: 5)
                     .padding(.top, 70)
-                
+
                 Spacer()
-                
-                // Pasos
+
+                // Pasos del asistente
                 Group {
                     switch viewModel.step {
                     case -1: StepIntro(viewModel: viewModel)
@@ -130,12 +149,12 @@ struct WizardView: View {
                     default: EmptyView()
                     }
                 }
-                
+
                 Spacer()
             }
         }
     }
-    
+
     private func showCompletionAlert() {
         let alert = NSAlert()
         alert.messageText = "Renombrado completado ✅"
@@ -149,14 +168,14 @@ struct WizardView: View {
     }
 }
 
-// MARK: - Subviews de pasos
+// MARK: - Pantalla 1: Introducción
 struct StepIntro: View {
     @ObservedObject var viewModel: WizardViewModel
     var body: some View {
         VStack(spacing: 20) {
             Text("Renombrator").font(.largeTitle).bold()
-            Text("Versión 1.0").font(.footnote).foregroundColor(.secondary)
-            Text("Renombra tus archivos en un solo clic y sin usar el terminal.")
+            Text("Versión 1.2").font(.footnote).foregroundColor(.secondary)
+            Text("Renombra, limpia o crea nuevos nombres personalizados para tus archivos de forma rápida.")
                 .font(.subheadline)
                 .foregroundColor(.secondary)
                 .multilineTextAlignment(.center)
@@ -170,6 +189,7 @@ struct StepIntro: View {
     }
 }
 
+// MARK: - Pantalla 2: Selección de archivos
 struct StepSelectFiles: View {
     @ObservedObject var viewModel: WizardViewModel
     var body: some View {
@@ -188,7 +208,7 @@ struct StepSelectFiles: View {
         .padding()
         .frame(maxWidth: 500)
     }
-    
+
     func selectFiles() {
         let panel = NSOpenPanel()
         panel.allowsMultipleSelection = true
@@ -199,7 +219,7 @@ struct StepSelectFiles: View {
             viewModel.selectedURLs = panel.urls
         }
     }
-    
+
     func selectFolder() {
         let panel = NSOpenPanel()
         panel.canChooseFiles = false
@@ -216,6 +236,7 @@ struct StepSelectFiles: View {
     }
 }
 
+// MARK: - Pantalla 3: Vista previa
 struct StepPreview: View {
     @ObservedObject var viewModel: WizardViewModel
     var body: some View {
@@ -240,29 +261,47 @@ struct StepPreview: View {
     }
 }
 
+// MARK: - Pantalla 4: Configuración
 struct StepConfigure: View {
     @ObservedObject var viewModel: WizardViewModel
     var body: some View {
         VStack(alignment: .leading, spacing: 15) {
             Text("Paso 3: Configura el renombrado").font(.headline)
+
             Picker("Capitalización:", selection: $viewModel.capitalizationOption) {
                 ForEach(WizardView.CapitalizationOption.allCases) { option in
                     Text(option.rawValue).tag(option)
                 }
-            }.pickerStyle(SegmentedPickerStyle())
-            
+            }
+            .pickerStyle(SegmentedPickerStyle())
+
+            Toggle("Borrar nombres originales", isOn: $viewModel.clearNames)
+
+            if viewModel.clearNames {
+                HStack {
+                    Text("Nuevo nombre base:")
+                    TextField("Ej: Foto", text: $viewModel.customBaseName)
+                        .textFieldStyle(RoundedBorderTextFieldStyle())
+                }
+            }
+
             Toggle("Numerar archivos", isOn: $viewModel.addNumbering)
-            
+                .disabled(viewModel.clearNames)
+
             HStack {
                 Text("Prefijo:")
                 TextField("Ej: X_", text: $viewModel.prefixText)
                     .textFieldStyle(RoundedBorderTextFieldStyle())
+                    .disabled(viewModel.clearNames)
             }
+
             HStack {
                 Text("Sufijo:")
                 TextField("Ej: _Final", text: $viewModel.suffixText)
                     .textFieldStyle(RoundedBorderTextFieldStyle())
+                    .disabled(viewModel.clearNames)
             }
+
             HStack {
                 Text("Carpeta destino:")
                 Text(viewModel.destinationFolder?.path ?? "Usando carpeta original")
@@ -270,7 +309,7 @@ struct StepConfigure: View {
                 Spacer()
                 Button("Seleccionar...") { selectDestinationFolder() }
             }
-            
+
             HStack {
                 Button("Anterior") { viewModel.step -= 1 }
                 Spacer()
@@ -284,7 +323,7 @@ struct StepConfigure: View {
         .padding()
         .frame(maxWidth: 500)
     }
-    
+
     func selectDestinationFolder() {
         let panel = NSOpenPanel()
         panel.canChooseFiles = false
@@ -297,6 +336,7 @@ struct StepConfigure: View {
     }
 }
 
+// MARK: - Pantalla 5: Progreso
 struct StepProgress: View {
     @ObservedObject var viewModel: WizardViewModel
     var completion: () -> Void
