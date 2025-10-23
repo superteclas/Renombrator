@@ -1,7 +1,7 @@
 import SwiftUI
 
 struct WizardView: View {
-    @State private var step = 0
+    @State private var step = -1 // Nuevo: empezamos en -1 para la pantalla inicial
     @State private var selectedURLs: [URL] = []
     
     // Carpeta de destino
@@ -19,115 +19,196 @@ struct WizardView: View {
     @State private var showCompletionMessage = false
     
     var body: some View {
-        VStack(spacing: 20) {
-            switch step {
-            case 0:
-                // Paso 1: Selección de archivos
-                VStack(spacing: 12) {
-                    Text("Paso 1: Selecciona tus archivos o carpeta")
-                        .font(.headline)
-                    HStack {
-                        Button("Seleccionar archivos") { selectFiles() }
-                        Button("Seleccionar carpeta") { selectFolder() }
-                        Spacer()
-                    }
-                    if !selectedURLs.isEmpty {
-                        Text("\(selectedURLs.count) archivos seleccionados")
-                            .foregroundColor(.green)
-                    }
-                    Spacer()
-                    Button("Siguiente") {
-                        if !selectedURLs.isEmpty { step += 1 }
-                    }
-                    .disabled(selectedURLs.isEmpty)
-                }
-                .padding()
-                
-            case 1:
-                // Paso 2: Vista previa de archivos
-                VStack(spacing: 12) {
-                    Text("Paso 2: Archivos seleccionados")
-                        .font(.headline)
-                    if selectedURLs.isEmpty {
-                        Text("No hay archivos seleccionados")
+        ZStack {
+            // Fondo general
+            LinearGradient(gradient: Gradient(colors: [.gray.opacity(0.1), .blue.opacity(0.15)]),
+                           startPoint: .topLeading,
+                           endPoint: .bottomTrailing)
+                .ignoresSafeArea()
+            
+            VStack(spacing: 25) {
+                switch step {
+                    
+                // MARK: - Pantalla inicial
+                case -1:
+                    VStack(spacing: 20) {
+                        Image(systemName: "folder.badge.gearshape")
+                            .resizable()
+                            .scaledToFit()
+                            .frame(width: 100, height: 100)
+                            .foregroundColor(.blue)
+                            .shadow(radius: 5)
+                        
+                        Text("Renombrator")
+                            .font(.largeTitle)
+                            .bold()
+                        
+                        Text("Versión 1.0")
+                            .font(.footnote)
                             .foregroundColor(.secondary)
-                    } else {
-                        List(selectedURLs, id: \.self) { url in
-                            Text(url.lastPathComponent)
-                                .lineLimit(1)
+                        
+                        Text("Renombra tus archivos en un solo clic y sin usar el terminal.")
+                            .font(.subheadline)
+                            .foregroundColor(.secondary)
+                            .multilineTextAlignment(.center)
+                            .padding(.horizontal, 30)
+                        
+                        Button("Comenzar") {
+                            withAnimation(.easeInOut(duration: 0.5)) {
+                                step = 0
+                            }
                         }
-                        .frame(minHeight: 200)
+                        .buttonStyle(.borderedProminent)
                     }
-                    HStack {
-                        Button("Anterior") { step -= 1 }
+                    .transition(.opacity)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    .padding()
+                    .multilineTextAlignment(.center)
+                    
+                // MARK: - Paso 1: Selección de archivos
+                case 0:
+                    VStack(spacing: 20) {
+                        Text("Paso 1: Selecciona tus archivos o carpeta")
+                            .font(.headline)
+                        
+                        HStack(spacing: 20) {
+                            Button("Seleccionar archivos") { selectFiles() }
+                            Button("Seleccionar carpeta") { selectFolder() }
+                        }
+                        
+                        if !selectedURLs.isEmpty {
+                            Text("\(selectedURLs.count) archivos seleccionados")
+                                .foregroundColor(.green)
+                        } else {
+                            Text("Ningún archivo seleccionado")
+                                .foregroundColor(.secondary)
+                        }
+                        
                         Spacer()
-                        Button("Siguiente") { step += 1 }
+                        
+                        Button("Siguiente") {
+                            if !selectedURLs.isEmpty { step += 1 }
+                        }
+                        .disabled(selectedURLs.isEmpty)
+                        .buttonStyle(.borderedProminent)
                     }
-                }
-                .padding()
-                
-            case 2:
-                // Paso 3: Configuración de renombrado y carpeta destino
-                VStack(alignment: .leading, spacing: 12) {
-                    Text("Paso 3: Configura el renombrado")
-                        .font(.headline)
+                    .padding()
+                    .frame(maxWidth: 500, maxHeight: 400)
+                    .multilineTextAlignment(.center)
                     
-                    Toggle("Primera letra mayúscula", isOn: $capitalizeFirstLetter)
-                    Toggle("Numerar archivos", isOn: $addNumbering)
-                    
-                    HStack {
-                        Text("Prefijo:")
-                        TextField("Ej: X_", text: $prefixText)
-                            .textFieldStyle(RoundedBorderTextFieldStyle())
+                // MARK: - Paso 2: Vista previa
+                case 1:
+                    VStack(spacing: 20) {
+                        Text("Paso 2: Archivos seleccionados")
+                            .font(.headline)
+                        
+                        if selectedURLs.isEmpty {
+                            Text("No hay archivos seleccionados")
+                                .foregroundColor(.secondary)
+                        } else {
+                            List(selectedURLs, id: \.self) { url in
+                                Text(url.lastPathComponent)
+                                    .lineLimit(1)
+                            }
+                            .frame(minHeight: 200)
+                        }
+                        
+                        HStack {
+                            Button("Anterior") { step -= 1 }
+                            Spacer()
+                            Button("Siguiente") { step += 1 }
+                        }
                     }
+                    .padding()
+                    .frame(maxWidth: 500, maxHeight: 400)
+                    .multilineTextAlignment(.center)
                     
-                    HStack {
-                        Text("Sufijo:")
-                        TextField("Ej: _Final", text: $suffixText)
-                            .textFieldStyle(RoundedBorderTextFieldStyle())
-                    }
-                    
-                    HStack {
-                        Text("Carpeta destino:")
-                        Text(destinationFolder?.path ?? "Usando carpeta original")
-                            .lineLimit(1)
+                // MARK: - Paso 3: Configuración
+                case 2:
+                    VStack(alignment: .leading, spacing: 15) {
+                        Text("Paso 3: Configura el renombrado")
+                            .font(.headline)
+                        
+                        Toggle("Primera letra mayúscula", isOn: $capitalizeFirstLetter)
+                        Toggle("Numerar archivos", isOn: $addNumbering)
+                        
+                        HStack {
+                            Text("Prefijo:")
+                            TextField("Ej: X_", text: $prefixText)
+                                .textFieldStyle(RoundedBorderTextFieldStyle())
+                        }
+                        
+                        HStack {
+                            Text("Sufijo:")
+                            TextField("Ej: _Final", text: $suffixText)
+                                .textFieldStyle(RoundedBorderTextFieldStyle())
+                        }
+                        
+                        HStack {
+                            Text("Carpeta destino:")
+                            Text(destinationFolder?.path ?? "Usando carpeta original")
+                                .lineLimit(1)
+                            Spacer()
+                            Button("Seleccionar...") { selectDestinationFolder() }
+                        }
+                        
                         Spacer()
-                        Button("Seleccionar...") { selectDestinationFolder() }
+                        
+                        HStack {
+                            Button("Anterior") { step -= 1 }
+                            Spacer()
+                            Button("Renombrar") { startRenaming() }
+                                .disabled(isRenaming)
+                                .buttonStyle(.borderedProminent)
+                        }
                     }
+                    .padding()
+                    .frame(maxWidth: 500, maxHeight: 400)
                     
-                    HStack {
-                        Button("Anterior") { step -= 1 }
-                        Spacer()
-                        Button("Renombrar") { startRenaming() }
-                            .disabled(isRenaming)
+                // MARK: - Paso 4: Progreso
+                case 3:
+                    VStack(spacing: 20) {
+                        if showCompletionMessage {
+                            // Nueva pantalla final
+                            Image(systemName: "checkmark.circle.fill")
+                                .resizable()
+                                .scaledToFit()
+                                .frame(width: 80, height: 80)
+                                .foregroundColor(.green)
+                                .shadow(radius: 5)
+                            
+                            Text("✅ Archivos renombrados correctamente")
+                                .font(.title2)
+                                .foregroundColor(.green)
+                            
+                            Button("Reiniciar") {
+                                resetWizard()
+                            }
+                            .buttonStyle(.borderedProminent)
+                            
+                        } else {
+                            Text("Renombrando archivos...")
+                                .font(.headline)
+                            ProgressView(value: progress)
+                                .progressViewStyle(LinearProgressViewStyle())
+                                .frame(width: 300)
+                        }
                     }
-                }
-                .padding()
-                
-            case 3:
-                // Paso 4: Barra de progreso
-                VStack(spacing: 12) {
-                    Text("Renombrando archivos...")
-                        .font(.headline)
-                    ProgressView(value: progress)
-                        .progressViewStyle(LinearProgressViewStyle())
-                        .frame(width: 300)
+                    .padding()
+                    .frame(maxWidth: 500, maxHeight: 400)
+                    .multilineTextAlignment(.center)
                     
-                    if showCompletionMessage {
-                        Text("✅ Archivos renombrados correctamente")
-                            .foregroundColor(.green)
-                    }
+                default:
+                    EmptyView()
                 }
-                .padding()
-                
-            default:
-                EmptyView()
             }
         }
-        .frame(width: 500, height: 400)
+        .animation(.easeInOut(duration: 0.3), value: step)
     }
-    
-    // MARK: - Selección de archivos
+}
+
+// MARK: - Funciones
+extension WizardView {
     func selectFiles() {
         let panel = NSOpenPanel()
         panel.allowsMultipleSelection = true
@@ -165,7 +246,6 @@ struct WizardView: View {
         }
     }
     
-    // MARK: - Renombrado
     func startRenaming() {
         isRenaming = true
         progress = 0
@@ -184,22 +264,14 @@ struct WizardView: View {
             for (index, url) in selectedURLs.enumerated() {
                 var newName = url.deletingPathExtension().lastPathComponent
                 
-                // Aplicar capitalización
                 if capitalizeFirstLetter {
                     newName = newName.prefix(1).uppercased() + newName.dropFirst()
                 }
-                
-                // Aplicar numeración
                 if addNumbering {
                     newName = "\(index + 1)_\(newName)"
                 }
                 
-                // Prefijo y sufijo
-                newName = "\(prefixText)\(newName)\(suffixText)"
-                
-                // Extensión original
-                newName += "." + url.pathExtension
-                
+                newName = "\(prefixText)\(newName)\(suffixText).\(url.pathExtension)"
                 let newURL = destinationFolder.appendingPathComponent(newName)
                 
                 do {
@@ -211,8 +283,7 @@ struct WizardView: View {
                 DispatchQueue.main.async {
                     progress = Double(index + 1) / Double(total)
                 }
-                
-                Thread.sleep(forTimeInterval: 0.1) // Para ver la barra de progreso
+                Thread.sleep(forTimeInterval: 0.1)
             }
             
             DispatchQueue.main.async {
@@ -220,6 +291,18 @@ struct WizardView: View {
                 isRenaming = false
             }
         }
+    }
+    
+    func resetWizard() {
+        step = -1
+        selectedURLs = []
+        destinationFolder = nil
+        prefixText = ""
+        suffixText = ""
+        addNumbering = false
+        capitalizeFirstLetter = false
+        progress = 0
+        showCompletionMessage = false
     }
 }
 
