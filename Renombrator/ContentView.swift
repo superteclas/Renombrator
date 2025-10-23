@@ -37,7 +37,7 @@ struct WizardView: View {
                     .frame(width: 100, height: 100)
                     .foregroundColor(.blue)
                     .shadow(radius: 5)
-                    .padding(.top, 20)
+                    .padding(.top, step == -1 ? 70 : 70) // Más espacio en pasos 0,1,2,3
                 
                 // Contenido del paso centrado
                 VStack {
