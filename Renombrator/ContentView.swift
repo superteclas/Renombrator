@@ -179,7 +179,7 @@ struct StepIntro: View {
     var body: some View {
         VStack(spacing: 20) {
             Text("Renombrator").font(.largeTitle).bold()
-            Text("Versión 1.2").font(.footnote).foregroundColor(.secondary)
+            Text("Versión 1.1").font(.footnote).foregroundColor(.secondary)
             Text("Renombra, limpia o crea nuevos nombres personalizados para tus archivos de forma rápida.")
                 .font(.subheadline)
                 .foregroundColor(.secondary)

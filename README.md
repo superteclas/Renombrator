@@ -72,3 +72,8 @@ Abre un issue o un pull request para participar.
 
 
 ---
+
+## 📜 Licencia
+
+Este proyecto está publicado bajo la licencia [MIT](LICENSE).  
+Eres libre de usarlo y modificarlo, siempre manteniendo la atribución original.
