@@ -13,8 +13,9 @@ class WizardViewModel: ObservableObject {
     @Published var isRenaming: Bool = false
     @Published var showCompletionMessage: Bool = false
     @Published var capitalizationOption: WizardView.CapitalizationOption = .none
-    @Published var clearNames: Bool = false // ✅ Borra nombres originales
-    @Published var customBaseName: String = "" // ✅ Nuevo nombre base personalizado
+    @Published var clearNames: Bool = false
+    @Published var customBaseName: String = ""
+    @Published var textToRemove: String = "" // ✅ Nuevo campo para eliminar texto
 
     func startRenaming(completion: @escaping () -> Void) {
         isRenaming = true
@@ -29,6 +30,11 @@ class WizardViewModel: ObservableObject {
 
             for (index, url) in self.selectedURLs.enumerated() {
                 var baseName = url.deletingPathExtension().lastPathComponent
+
+                // ✅ Eliminar texto específico si el usuario lo ha indicado
+                if !self.textToRemove.isEmpty {
+                    baseName = baseName.replacingOccurrences(of: self.textToRemove, with: "")
+                }
 
                 // ✅ Si el usuario borra los nombres originales
                 if self.clearNames {
@@ -99,6 +105,7 @@ class WizardViewModel: ObservableObject {
         addNumbering = false
         clearNames = false
         customBaseName = ""
+        textToRemove = ""
         capitalizationOption = .none
         progress = 0
         showCompletionMessage = false
@@ -125,7 +132,6 @@ struct WizardView: View {
                 .ignoresSafeArea()
 
             VStack(spacing: 0) {
-                // Logo
                 Image("Image")
                     .resizable()
                     .scaledToFit()
@@ -136,7 +142,6 @@ struct WizardView: View {
 
                 Spacer()
 
-                // Pasos del asistente
                 Group {
                     switch viewModel.step {
                     case -1: StepIntro(viewModel: viewModel)
@@ -283,6 +288,13 @@ struct StepConfigure: View {
                     TextField("Ej: Foto", text: $viewModel.customBaseName)
                         .textFieldStyle(RoundedBorderTextFieldStyle())
                 }
+            }
+
+            // ✅ Nuevo campo: texto a eliminar del nombre original
+            HStack {
+                Text("Borrar texto:")
+                TextField("Ej: _jo_jo", text: $viewModel.textToRemove)
+                    .textFieldStyle(RoundedBorderTextFieldStyle())
             }
 
             Toggle("Numerar archivos", isOn: $viewModel.addNumbering)
